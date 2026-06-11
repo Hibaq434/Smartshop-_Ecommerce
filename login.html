@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Validation — SmartShop</title>
+    <style>
+        :root {
+            --blue: #2563EB;
+            --blue-dark: #1d4ed8;
+            --gray-50: #f8fafc;
+            --gray-100: #f1f5f9;
+            --gray-200: #e2e8f0;
+            --gray-300: #cbd5e1;
+            --gray-500: #64748b;
+            --gray-700: #334155;
+            --gray-900: #0f172a;
+            --red: #dc2626;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f0f7ff 0%, #e8f4fd 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            color: var(--gray-900);
+        }
+
+        .nav {
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            height: 52px;
+            border-bottom: 1px solid var(--gray-200);
+            background: #fff;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav-logo {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--blue);
+            letter-spacing: -0.5px;
+            text-decoration: none;
+        }
+
+        .container {
+            max-width: 400px;
+            width: 90%;
+            margin: 60px auto;
+            background: white;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--gray-200);
+        }
+
+        h3 {
+            margin-top: 0;
+            margin-bottom: 24px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--gray-900);
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.15s;
+            background: var(--gray-50);
+            font-family: inherit;
+        }
+
+        input:focus {
+            border-color: var(--blue);
+            background: white;
+        }
+
+        .login-btn {
+            width: 100%;
+            padding: 12px;
+            background: var(--blue);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-top: 8px;
+        }
+
+        .login-btn:hover {
+            background: var(--blue-dark);
+        }
+
+        .error {
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            color: #b91c1c;
+            padding: 12px;
+            margin-top: 15px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            display: none;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 24px;
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        .register-link a {
+            color: var(--blue);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+<nav class="nav">
+    <a href="index.php" class="nav-logo">SmartShop</a>
+</nav>
+
+<div class="container">
+    <h3>Smart E-Commerce Login</h3>
+
+    <form onsubmit="return validateForm()">
+        <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" placeholder="Enter username">
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" placeholder="Enter password">
+        </div>
+
+        <button class="login-btn" type="submit">Login</button>
+
+        <div id="error-message" class="error"></div>
+    </form>
+
+    <div class="register-link">
+        Do not have account? <a href="register.php">Register</a>
+    </div>
+</div>
+
+<script>
+    function validateForm(){
+        let username = document.getElementById("username").value.trim();
+        let password = document.getElementById("password").value;
+        let error = document.getElementById("error-message");
+
+        if (username === "" && password === "") {
+            error.style.display = "block";
+            error.innerHTML = "Username and Password are required";
+            return false;
+        } else if (username === "") {
+            error.style.display = "block";
+            error.innerHTML = "Username is required";
+            return false;
+        } else if (password === "") {
+            error.style.display = "block";
+            error.innerHTML = "Password is required";
+            return false;
+        }
+
+        error.style.display = "none";
+        alert("Validation successful!");
+        return true;
+    }
+</script>
+
+</body>
+</html>
