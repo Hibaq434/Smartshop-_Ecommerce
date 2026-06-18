@@ -1,0 +1,13 @@
+<?php
+$host     = "localhost";
+$dbname   = "student_portal";
+$username = "root";
+$password = "";          // default XAMPP password is empty
+
+try {
+    $pdo = new PDO("mysql:host=$host;dbname=$dbname;charset=utf8", $username, $password);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Connection failed: " . $e->getMessage());
+}
+?>
