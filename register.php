@@ -1,8 +1,9 @@
 <?php
 declare(strict_types=1);
 session_start();
-require_once __DIR__ . '/dbconnect.php';
-require_once __DIR__ . '/session_helper.php';
+require_once __DIR__ . '/includes/app.php';
+
+ensureCoreSchema($conn);
 
 // Already logged in
 if (isLoggedIn()) {

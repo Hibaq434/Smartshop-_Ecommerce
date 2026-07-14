@@ -2,20 +2,21 @@
 declare(strict_types=1);
 session_start();
 
-require_once __DIR__ . '/dbconnect.php';
-require_once __DIR__ . '/session_helper.php';
+require_once __DIR__ . '/includes/app.php';
+
+ensureCoreSchema($conn);
 
 // Already logged in → redirect based on role
 if (isLoggedIn()) {
-    header(isAdmin() ? 'Location: index.php?p=admin' : 'Location: index.php');
+    header(isAdmin() ? 'Location: dashboard.php' : 'Location: index.php');
     exit;
 }
 
-$error = (string)($_GET['error'] ?? '');
-$successMsg = (string)($_GET['msg'] ?? '');
+$error      = (string)($_GET['error'] ?? '');
+$successMsg = (string)($_GET['msg']   ?? '');
 $loginError = '';
 
-// ── Handle login submission ───────────────────────────────────────────────────
+// ── Handle login submission ──────────────────────────────────
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim((string)($_POST['username'] ?? ''));
     $password = (string)($_POST['password'] ?? '');
@@ -24,8 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $loginError = 'Please enter both username and password.';
     } else {
         $stmt = mysqli_prepare($conn,
-            'SELECT id, username, email, password_hash, role, full_name
+            'SELECT id, username, email, password_hash, role, full_name, status
                FROM users WHERE username = ? LIMIT 1');
+
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 's', $username);
             mysqli_stmt_execute($stmt);
@@ -34,21 +36,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_stmt_close($stmt);
 
             if ($user && password_verify($password, (string)$user['password_hash'])) {
-                // Success — set session
+                if (($user['status'] ?? 'active') === 'inactive') {
+                    $loginError = 'This account has been deactivated. Please contact support.';
+                } else {
+                // ── Success: regenerate session and store data ──
+                $resolvedRole = normalizeRole($user['role'] ?? 'user');
                 session_regenerate_id(true);
                 $_SESSION['user_id']   = (int)$user['id'];
                 $_SESSION['username']  = (string)$user['username'];
                 $_SESSION['full_name'] = (string)($user['full_name'] ?? $user['username']);
-                $_SESSION['role']      = (string)$user['role'];
+                $_SESSION['role']      = $resolvedRole;
 
-                // Redirect by role
-                if ($user['role'] === 'admin') {
-                    header('Location: index.php?p=admin&msg=' . urlencode('Welcome back, ' . $user['username'] . '! You are logged in as Admin.'));
+                // ── Role-based redirect ────────────────────────
+                if ($resolvedRole === 'admin') {
+                    header('Location: dashboard.php?msg=' . urlencode('Welcome back, ' . $user['full_name'] . '! You are logged in as Admin.'));
                 } else {
-                    header('Location: index.php?msg=' . urlencode('Welcome back, ' . $user['username'] . '!'));
+                    header('Location: index.php?msg=' . urlencode('Welcome back, ' . $user['full_name'] . '!'));
                 }
                 exit;
+                }
+
             } else {
+                // Generic message — don't reveal which field is wrong
                 $loginError = 'Invalid username or password.';
             }
         } else {
@@ -112,10 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             border: 1px solid var(--gray-200);
         }
 
-        .logo-wrap {
-            text-align: center;
-            margin-bottom: 24px;
-        }
+        .logo-wrap { text-align: center; margin-bottom: 24px; }
         .logo-icon {
             width: 52px; height: 52px;
             background: linear-gradient(135deg, #1e3a5f, #2563EB);
@@ -123,7 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
             margin-bottom: 10px;
         }
         h3 { font-size: 20px; font-weight: 700; color: var(--gray-900); text-align: center; margin-bottom: 4px; }
@@ -166,22 +174,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             padding: 12px 14px; border-radius: 8px; font-size: 13px;
             margin-bottom: 18px;
         }
-
-        /* Demo credentials card */
-        .demo-card {
-            margin-top: 24px;
-            background: var(--gray-50);
-            border: 1px solid var(--gray-200);
-            border-radius: 10px;
-            padding: 14px 16px;
+        .success-box {
+            background: #dcfce7; border: 1px solid #bbf7d0; color: #15803d;
+            padding: 12px 14px; border-radius: 8px; font-size: 13px;
+            margin-bottom: 18px;
         }
-        .demo-title { font-size: 11px; font-weight: 700; color: var(--gray-500); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 10px; }
-        .demo-row   { display: flex; justify-content: space-between; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--gray-200); font-size: 12px; }
-        .demo-row:last-child { border: none; }
-        .demo-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700; }
-        .badge-admin { background: #dbeafe; color: #1e40af; }
-        .badge-user  { background: #dcfce7; color: #15803d; }
-        .demo-cred   { color: var(--gray-700); font-family: monospace; font-size: 12px; }
 
         .register-link { text-align: center; margin-top: 22px; font-size: 13px; color: var(--gray-500); }
         .register-link a { color: var(--blue); text-decoration: none; font-weight: 600; }
@@ -189,34 +186,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     </style>
 </head>
 <body>
+
 <nav class="nav">
     <a href="index.php" class="nav-logo">SmartShop</a>
 </nav>
 
 <div class="container">
     <div class="logo-wrap">
-        <div class="logo-icon">🛍️</div>
+        <div class="logo-icon">SS</div>
         <h3>Welcome back</h3>
         <p class="sub">Login to your SmartShop account</p>
     </div>
 
-    <!-- Visual role switcher (cosmetic — role comes from DB) -->
-    <div class="role-tabs" id="roleTabs">
-        <button class="role-tab active" id="tabUser"  onclick="setTab('user')">
-            <span class="icon">👤</span>Customer
+    <!-- Visual role switcher (cosmetic — actual role comes from DB) -->
+    <div class="role-tabs">
+        <button class="role-tab active" id="tabUser" onclick="setTab('user')">
+            <span class="icon">U</span>Customer
         </button>
-        <button class="role-tab"        id="tabAdmin" onclick="setTab('admin')">
-            <span class="icon">🛡️</span>Admin
+        <button class="role-tab" id="tabAdmin" onclick="setTab('admin')">
+            <span class="icon">A</span>Admin
         </button>
     </div>
 
     <?php if ($successMsg !== ''): ?>
-        <div style="background:#dcfce7;border:1px solid #bbf7d0;color:#15803d;padding:12px 14px;border-radius:8px;font-size:13px;margin-bottom:18px;">✅ <?= htmlspecialchars($successMsg) ?></div>
-    <?php endif; ?>
-    <?php if ($loginError !== ''): ?>
-        <div class="error-box">⚠️ <?= htmlspecialchars($loginError) ?></div>
+        <div class="success-box"><?= htmlspecialchars($successMsg) ?></div>
+    <?php elseif ($loginError !== ''): ?>
+        <div class="error-box"><?= htmlspecialchars($loginError) ?></div>
     <?php elseif ($error !== ''): ?>
-        <div class="error-box">⚠️ <?= htmlspecialchars($error) ?></div>
+        <div class="error-box"><?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
     <form method="POST" id="loginForm">
@@ -225,7 +222,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             <input type="text" id="username" name="username"
                    placeholder="Enter your username"
                    value="<?= htmlspecialchars((string)($_POST['username'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                   required autocomplete="username">
+                   required autocomplete="username" autofocus>
         </div>
         <div class="form-group">
             <label for="password">Password</label>
@@ -236,21 +233,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <button class="login-btn" type="submit" id="loginBtn">Login as Customer</button>
     </form>
 
-    <!-- Demo credentials -->
-    <div class="demo-card">
-        <div class="demo-title">Demo Accounts</div>
-        <div class="demo-row">
-            <span><span class="demo-badge badge-admin">Admin</span></span>
-            <span class="demo-cred">admin / Admin@123</span>
-        </div>
-        <div class="demo-row">
-            <span><span class="demo-badge badge-user">User</span></span>
-            <span class="demo-cred">john / User@123</span>
-        </div>
-    </div>
-
     <div class="register-link">
-        Do not have account? <a href="register.php">Register</a>
+        Don't have an account? <a href="register.php">Register here</a>
     </div>
 </div>
 

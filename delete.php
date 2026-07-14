@@ -2,7 +2,12 @@
 
 declare(strict_types=1);
 
+session_start();
+
 require_once __DIR__ . '/dbconnect.php';
+require_once __DIR__ . '/session_helper.php';
+
+requireAdmin();
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) {

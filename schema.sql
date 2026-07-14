@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS products (
   product_name VARCHAR(255) NOT NULL,
   price DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   quantity INT NOT NULL DEFAULT 0,
+  image VARCHAR(255) DEFAULT NULL,
   PRIMARY KEY (id),
   KEY idx_products_name (product_name)
 ) ENGINE=InnoDB

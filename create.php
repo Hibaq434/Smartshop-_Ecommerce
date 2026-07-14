@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
+session_start();
+
 require_once __DIR__ . '/dbconnect.php';
+require_once __DIR__ . '/session_helper.php';
+require_once __DIR__ . '/includes/product_images.php';
+
+requireAdmin();
+ensureProductsImageColumn($conn);
 
 $message = '';
 
@@ -10,16 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $product = trim((string)($_POST['product'] ?? ''));
     $price = (float)($_POST['price'] ?? 0);
     $quantity = (int)($_POST['quantity'] ?? 0);
+    $imageFilename = resolveProductImageFilename($_POST['product_image'] ?? null);
 
     if ($product === '') {
         $message = 'Product name is required.';
     } else {
-        $stmt = mysqli_prepare($conn, 'INSERT INTO products (product_name, price, quantity) VALUES (?, ?, ?)');
+        $stmt = mysqli_prepare($conn, 'INSERT INTO products (product_name, price, quantity, image) VALUES (?, ?, ?, ?)');
         if ($stmt) {
-            mysqli_stmt_bind_param($stmt, 'sdi', $product, $price, $quantity);
+            mysqli_stmt_bind_param($stmt, 'sdis', $product, $price, $quantity, $imageFilename);
             if (mysqli_stmt_execute($stmt)) {
-                // If the user came from the new UI, send them back there.
-                header('Location: index.php?p=admin&section=products&msg=' . urlencode('Product added'));
+                header('Location: dashboard.php?section=products&msg=' . urlencode('Product added'));
                 exit;
             }
             mysqli_stmt_close($stmt);
@@ -51,7 +58,7 @@ body{
     padding: 20px;
 }
 
-input{
+input, select{
     width: 100%;
     padding: 10px;
     margin-bottom: 12px;
@@ -70,6 +77,11 @@ button{
     margin-top: 10px;
 }
 
+.error{
+    color: #b91c1c;
+    margin-top: 10px;
+}
+
 </style>
 
 </head>
@@ -84,15 +96,20 @@ button{
 
 <input type="text" name="product" placeholder="Product Name" required>
 
-<input type="number" name="price" placeholder="Price" required>
+<input type="number" name="price" placeholder="Price" step="0.01" min="0" required>
 
-<input type="number" name="quantity" placeholder="Quantity" required>
+<input type="number" name="quantity" placeholder="Quantity" min="0" required>
+
+<label for="product_image">Product Image</label>
+<?= productImageDropdown(PRODUCT_IMAGE_DEFAULT_FILE, 'product_image') ?>
 
 <button>Add Product</button>
 
 </form>
 
-<p class="success"><?php echo $message; ?></p>
+<?php if ($message !== ''): ?>
+<p class="<?= str_contains($message, 'Failed') ? 'error' : 'success' ?>"><?= htmlspecialchars($message) ?></p>
+<?php endif; ?>
 
 </div>
 

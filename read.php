@@ -2,9 +2,16 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/dbconnect.php';
+session_start();
 
-$sql = 'SELECT * FROM products ORDER BY id DESC';
+require_once __DIR__ . '/dbconnect.php';
+require_once __DIR__ . '/session_helper.php';
+require_once __DIR__ . '/includes/product_images.php';
+
+requireAdmin();
+ensureProductsImageColumn($conn);
+
+$sql = 'SELECT id, product_name, price, quantity, image FROM products ORDER BY id DESC';
 $result = mysqli_query($conn, $sql);
 
 ?>
@@ -99,6 +106,7 @@ td{
 <tr>
 
 <th>ID</th>
+<th>Image</th>
 <th>Product Name</th>
 <th>Price</th>
 <th>Quantity</th>
@@ -115,6 +123,12 @@ while($row = mysqli_fetch_assoc($result)){
 <tr>
 
 <td><?php echo htmlspecialchars((string)$row['id']); ?></td>
+
+<td>
+<img src="<?php echo htmlspecialchars(productImageUrl($row['image'] ?? '')); ?>" onerror="this.onerror=null;this.src='assets/images/products/default.jpg';"
+     alt="<?php echo htmlspecialchars((string)$row['product_name']); ?>"
+     style="width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #ddd;">
+</td>
 
 <td><?php echo htmlspecialchars((string)$row['product_name']); ?></td>
 

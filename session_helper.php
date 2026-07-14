@@ -11,14 +11,32 @@ function isLoggedIn(): bool
     return !empty($_SESSION['user_id']);
 }
 
+/**
+ * Normalize role values from DB/session into canonical strings.
+ * Supports string roles (admin/user) and numeric roles (1/0).
+ */
+function normalizeRole(mixed $role): string
+{
+    if (is_int($role) || is_float($role) || (is_string($role) && is_numeric($role))) {
+        return ((int)$role === 1) ? 'admin' : 'user';
+    }
+
+    $value = strtolower(trim((string)$role));
+    if ($value === 'admin') {
+        return 'admin';
+    }
+
+    return 'user';
+}
+
 function isAdmin(): bool
 {
-    return isLoggedIn() && ($_SESSION['role'] ?? '') === 'admin';
+    return isLoggedIn() && normalizeRole($_SESSION['role'] ?? '') === 'admin';
 }
 
 function isUser(): bool
 {
-    return isLoggedIn() && ($_SESSION['role'] ?? '') === 'user';
+    return isLoggedIn() && normalizeRole($_SESSION['role'] ?? '') === 'user';
 }
 
 function currentUsername(): string
@@ -33,7 +51,12 @@ function currentFullName(): string
 
 function currentRole(): string
 {
-    return (string)($_SESSION['role'] ?? '');
+    return normalizeRole($_SESSION['role'] ?? 'user');
+}
+
+function currentRoleLabel(): string
+{
+    return ucfirst(currentRole());
 }
 
 /** Redirect to login if not authenticated at all. */

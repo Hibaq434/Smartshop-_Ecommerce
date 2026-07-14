@@ -2,7 +2,14 @@
 
 declare(strict_types=1);
 
+session_start();
+
 require_once __DIR__ . '/dbconnect.php';
+require_once __DIR__ . '/session_helper.php';
+require_once __DIR__ . '/includes/product_images.php';
+
+requireAdmin();
+ensureProductsImageColumn($conn);
 
 $id = (int)($_GET['id'] ?? 0);
 if ($id <= 0) {
@@ -11,7 +18,7 @@ if ($id <= 0) {
 }
 
 $row = null;
-$stmt = mysqli_prepare($conn, 'SELECT id, product_name, price, quantity FROM products WHERE id = ?');
+$stmt = mysqli_prepare($conn, 'SELECT id, product_name, price, quantity, image FROM products WHERE id = ?');
 if ($stmt) {
     mysqli_stmt_bind_param($stmt, 'i', $id);
     mysqli_stmt_execute($stmt);
@@ -25,17 +32,20 @@ if (!$row) {
     exit('Product not found.');
 }
 
+$message = '';
+
 if (isset($_POST['update'])) {
     $product = trim((string)($_POST['product'] ?? ''));
     $price = (float)($_POST['price'] ?? 0);
     $quantity = (int)($_POST['quantity'] ?? 0);
+    $imageFilename = resolveProductImageFilename($_POST['product_image'] ?? null);
 
     if ($product === '') {
-        // fall through and re-render the form
+        $message = 'Product name is required.';
     } else {
-        $updateStmt = mysqli_prepare($conn, 'UPDATE products SET product_name = ?, price = ?, quantity = ? WHERE id = ?');
+        $updateStmt = mysqli_prepare($conn, 'UPDATE products SET product_name = ?, price = ?, quantity = ?, image = ? WHERE id = ?');
         if ($updateStmt) {
-            mysqli_stmt_bind_param($updateStmt, 'sdii', $product, $price, $quantity, $id);
+            mysqli_stmt_bind_param($updateStmt, 'sdisi', $product, $price, $quantity, $imageFilename, $id);
             mysqli_stmt_execute($updateStmt);
             mysqli_stmt_close($updateStmt);
         }
@@ -67,7 +77,7 @@ body{
     padding: 20px;
 }
 
-input{
+input, select{
     width: 100%;
     padding: 10px;
     margin-bottom: 12px;
@@ -79,6 +89,21 @@ button{
     background: #24345c;
     color: white;
     border: none;
+    margin-bottom: 8px;
+}
+
+.preview{
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    border-radius: 6px;
+    margin-bottom: 12px;
+    border: 1px solid #ddd;
+}
+
+.error{
+    color: #b91c1c;
+    margin-top: 10px;
 }
 
 </style>
@@ -91,6 +116,8 @@ button{
 
 <h2>Edit Product</h2>
 
+<img class="preview" src="<?= htmlspecialchars(productImageUrl($row['image'] ?? '')) ?>" onerror="this.onerror=null;this.src='assets/images/products/default.jpg';" alt="<?= htmlspecialchars((string)$row['product_name']) ?>">
+
 <form method="POST">
 
 <input type="text"
@@ -99,17 +126,27 @@ button{
 
 <input type="number"
        name="price"
+       step="0.01"
+       min="0"
     value="<?php echo htmlspecialchars((string)$row['price']); ?>">
 
 <input type="number"
        name="quantity"
+       min="0"
     value="<?php echo htmlspecialchars((string)$row['quantity']); ?>">
+
+<label for="product_image">Product Image</label>
+<?= productImageDropdown($row['image'] ?? '', 'product_image') ?>
 
 <button name="update">
 Update Product
 </button>
 
 </form>
+
+<?php if ($message !== ''): ?>
+<p class="error"><?= htmlspecialchars($message) ?></p>
+<?php endif; ?>
 
 </div>
 
